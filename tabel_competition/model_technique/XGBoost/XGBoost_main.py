@@ -1,6 +1,5 @@
 # required library
 import numpy as np
-import optuna
 import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import mean_squared_error

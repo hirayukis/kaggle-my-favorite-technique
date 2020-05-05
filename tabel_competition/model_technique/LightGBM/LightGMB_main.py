@@ -1,7 +1,6 @@
 # required library
 import lightgbm as lgb
 import numpy as np
-import optuna
 import pandas as pd
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import KFold
