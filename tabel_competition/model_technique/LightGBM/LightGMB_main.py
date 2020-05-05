@@ -22,7 +22,6 @@ LGB_ROUND_NUM = 10000
 
 objective = 'regression'
 metric = 'rmse'
-
 tuning_params = {"learning_rate": 0.001,
                  'lambda_l1': 0,
                  'lambda_l2': 0,
@@ -31,8 +30,6 @@ tuning_params = {"learning_rate": 0.001,
                  'bagging_fraction': 1.0,
                  'bagging_freq': 1,
                  'min_child_samples': 100}
-
-# LightGBM main train
 params = {
     'task': 'train',
     'boosting_type': 'gbdt',
@@ -41,8 +38,9 @@ params = {
     'verbosity': -1,
     "seed": 42,
 }
-params.update(tuning_params)
 
+# LightGBM main train  and predict
+params.update(tuning_params)
 kf = KFold(n_splits=CV_FOLD_NUM,
            shuffle=True,
            random_state=42)
