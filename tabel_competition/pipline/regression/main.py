@@ -1,3 +1,5 @@
+import lightgbm as lgb
+import xgboost as xgb
 import numpy as np
 import pandas as pd
 
@@ -5,6 +7,7 @@ from lib.clean_data import clean
 from lib.create_features import create_features
 from lib.encode_feature import label_encode
 from models.my_lightgbm import lightgbm_train
+from models.my_xgboost import xgboost_train
 from sklearn.model_selection import KFold
 
 # fhase1. set parameters
@@ -19,7 +22,8 @@ cat_encoding_method = "LabelEncoder"
 target_col = "salary"
 fold_num = 4
 IS_MODEL_RUN = {
-    "LightGBM": True
+    "LightGBM": False,
+    "XGBoost": True
 }
 submission_path = "submission/"
 
@@ -58,6 +62,8 @@ print(f"recreate test shape: {X_test.shape}")
 skf = KFold(n_splits=fold_num)
 if IS_MODEL_RUN["LightGBM"]:
     lgb_pred_cv = np.zeros(len(test.index))
+if IS_MODEL_RUN["XGBoost"]:
+    xgb_pred_cv = np.zeros(len(test.index))
 
 for i, indexs in enumerate(skf.split(X, y)):
     print(f"=====Fold: {i+1}=====")
@@ -74,3 +80,10 @@ for i, indexs in enumerate(skf.split(X, y)):
         light_submission_df = pd.DataFrame(lgb_pred_cv)
         light_submission_df.columns = [target_col]
         light_submission_df.to_csv(submission_path + "submission_single_lgb.csv", index=False)
+    if IS_MODEL_RUN["XGBoost"]:
+        xgb_model, valid_score = xgboost_train(X_train, y_train, X_valid, y_valid)
+        xgb_submission = xgb_model.predict(xgb.DMatrix(X_test), ntree_limit=xgb_model.best_iteration)
+        xgb_pred_cv += xgb_submission / fold_num
+        xgb_submission_df = pd.DataFrame(xgb_pred_cv)
+        xgb_submission_df.columns = [target_col]
+        xgb_submission_df.to_csv(submission_path + "submission_single_xgb.csv", index=False)
