@@ -10,6 +10,7 @@ from models.my_lightgbm import lightgbm_train
 from models.my_xgboost import xgboost_train
 from models.my_catboost import catboost_train
 from models.my_svm import svr_train
+from models.my_knn import knnr_train
 from sklearn.model_selection import KFold
 
 # fhase1. set parameters
@@ -33,6 +34,7 @@ IS_MODEL_RUN = {
     "XGBoost": False,
     "CatBoost": False,
     "SVR": True,
+    "KNNR": True
 }
 # simple ensemble
 do_ensemble = False
@@ -40,10 +42,13 @@ simple_ensemble = {
     "LightGBM": .8,
     "XGBoost": .1,
     "CatBoost": .0,
-    "SVR": .1
+    "SVR": .1,
+    "KNNR": 0
 }
 # save path
 submission_path = "submission/"
+# random seed
+seed = 42
 
 # fhase1.5 check parameters
 assert sum(IS_MODEL_RUN.values()) != 0
@@ -83,7 +88,7 @@ print(f"recreate test shape: {X_test.shape}")
 # fhase7. adversarial validation
 
 # fahse8. training
-skf = KFold(n_splits=fold_num)
+kf = KFold(n_splits=fold_num, shuffle=True, random_state=seed)
 if IS_MODEL_RUN["LightGBM"]:
     lgb_pred_cv = np.zeros(len(test.index))
     lgb_valid_scores = []
@@ -96,8 +101,11 @@ if IS_MODEL_RUN["CatBoost"]:
 if IS_MODEL_RUN["SVR"]:
     svr_pred_cv = np.zeros(len(test.index))
     svr_valid_scores = []
+if IS_MODEL_RUN["KNNR"]:
+    knnr_pred_cv = np.zeros(len(test.index))
+    knnr_valid_scores = []
 
-for i, indexs in enumerate(skf.split(X, y)):
+for i, indexs in enumerate(kf.split(X, y)):
     print(f"\n=====Fold: {i+1}=====")
     train_index, test_index = indexs
     X_train, y_train = X[train_index], y[train_index]
@@ -140,3 +148,12 @@ for i, indexs in enumerate(skf.split(X, y)):
         svr_submission_df = pd.DataFrame(svr_pred_cv)
         svr_submission_df.columns = [target_col]
         svr_submission_df.to_csv(submission_path + "submission_single_svr.csv", index=False)
+    if IS_MODEL_RUN["KNNR"]:
+        knnr_model, knnr_valid_score = knnr_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} KNN Regression valid score is: {knnr_valid_score}")
+        knnr_valid_scores.append(knnr_valid_score)
+        knnr_submission = knnr_model.predict(X_test)
+        knnr_pred_cv += knnr_submission / fold_num
+        knnr_submission_df = pd.DataFrame(knnr_pred_cv)
+        knnr_submission_df.columns = [target_col]
+        knnr_submission_df.to_csv(submission_path + "submission_single_knnr.csv", index=False)
