@@ -8,23 +8,31 @@ from lib.create_features import create_features
 from lib.encode_feature import label_encode
 from models.my_lightgbm import lightgbm_train
 from models.my_xgboost import xgboost_train
+from models.my_catboost import catboost_train
 from sklearn.model_selection import KFold
 
 # fhase1. set parameters
+# file path
 TRAIN_DATA_PATH = "../../sample_data/regression_sample_train.csv"
 TEST_DATA_PATH = "../../sample_data/regression_sample_test.csv"
+# features
 cat_features = ["area"]
 num_features = [
     "id", "position", "age", "sex", "partner", "num_child",
     "education", "service_length", "study_time", "commute", "overtime"
 ]
-cat_encoding_method = "LabelEncoder"
 target_col = "salary"
+# encoding method
+cat_encoding_method = "LabelEncoder"
+# kFold
 fold_num = 4
+# what to do in a single model
 IS_MODEL_RUN = {
-    "LightGBM": True,
-    "XGBoost": True
+    "LightGBM": False,
+    "XGBoost": False,
+    "CatBoost": True
 }
+# save path
 submission_path = "submission/"
 
 # fhase1.5 check parameters
@@ -62,13 +70,16 @@ print(f"recreate test shape: {X_test.shape}")
 skf = KFold(n_splits=fold_num)
 if IS_MODEL_RUN["LightGBM"]:
     lgb_pred_cv = np.zeros(len(test.index))
-    lgb_valid_score = 0
+    lgb_valid_scores = []
 if IS_MODEL_RUN["XGBoost"]:
     xgb_pred_cv = np.zeros(len(test.index))
-    xgb_valid_score = 0
+    xgb_valid_scores = []
+if IS_MODEL_RUN["CatBoost"]:
+    cbt_pred_cv = np.zeros(len(test.index))
+    cbt_valid_scores = []
 
 for i, indexs in enumerate(skf.split(X, y)):
-    print(f"=====Fold: {i+1}=====")
+    print(f"\n=====Fold: {i+1}=====")
     train_index, test_index = indexs
     X_train, y_train = X[train_index], y[train_index]
     X_valid, y_valid = X[test_index], y[test_index]
@@ -76,17 +87,28 @@ for i, indexs in enumerate(skf.split(X, y)):
     # singel LightGBM
     if IS_MODEL_RUN["LightGBM"]:
         lgb_model, lgb_valid_score, importance_df = lightgbm_train(X_train, y_train, X_valid, y_valid, cols)
+        print(f"Fold {i+1} LightGBM valid score is: {lgb_valid_score}")
+        lgb_valid_scores.append(lgb_valid_score)
         lgb_submission = lgb_model.predict((X_test), num_iteration=lgb_model.best_iteration)
         lgb_pred_cv += lgb_submission / fold_num
-        lgb_valid_score += lgb_valid_score / fold_num
         light_submission_df = pd.DataFrame(lgb_pred_cv)
         light_submission_df.columns = [target_col]
         light_submission_df.to_csv(submission_path + "submission_single_lgb.csv", index=False)
     if IS_MODEL_RUN["XGBoost"]:
         xgb_model, xgb_valid_score = xgboost_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} XGBoost valid score is: {xgb_valid_score}")
+        xgb_valid_scores.append(xgb_valid_score)
         xgb_submission = xgb_model.predict(xgb.DMatrix(X_test), ntree_limit=xgb_model.best_iteration)
         xgb_pred_cv += xgb_submission / fold_num
-        lgb_valid_score += xgb_valid_score / fold_num
         xgb_submission_df = pd.DataFrame(xgb_pred_cv)
         xgb_submission_df.columns = [target_col]
         xgb_submission_df.to_csv(submission_path + "submission_single_xgb.csv", index=False)
+    if IS_MODEL_RUN["CatBoost"]:
+        cbt_model, cbt_valid_score = catboost_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} CatBoost valid score is: {cbt_valid_score}")
+        cbt_valid_scores.append(cbt_valid_score)
+        cbt_submission = cbt_model.predict(X_test)
+        cbt_pred_cv += cbt_submission / fold_num
+        cbt_submission_df = pd.DataFrame(cbt_pred_cv)
+        cbt_submission_df.columns = [target_col]
+        cbt_submission_df.to_csv(submission_path + "submission_single_cbt.csv", index=False)
