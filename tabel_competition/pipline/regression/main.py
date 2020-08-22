@@ -11,6 +11,8 @@ from models.my_xgboost import xgboost_train
 from models.my_catboost import catboost_train
 from models.my_svm import svr_train
 from models.my_knn import knnr_train
+from models.my_ridge import ridge_train
+from models.my_linear_regression import linear_regression_train
 from models.my_random_forest import randomforest_train
 from sklearn.model_selection import KFold
 
@@ -37,6 +39,8 @@ IS_MODEL_RUN = {
     "SVR": False,
     "KNNR": False,
     "RandomForest": True,
+    "Ridge": True,
+    "LinearRegression": True,
 }
 # simple ensemble
 do_ensemble = False
@@ -47,6 +51,8 @@ simple_ensemble = {
     "SVR": .1,
     "KNNR": 0,
     "RandomForest": 0,
+    "Ridge": 0,
+    "LinearRegression": 0,
 }
 # save path
 submission_path = "submission/"
@@ -110,6 +116,12 @@ if IS_MODEL_RUN["KNNR"]:
 if IS_MODEL_RUN["RandomForest"]:
     rf_pred_cv = np.zeros(len(test.index))
     rf_valid_scores = []
+if IS_MODEL_RUN["Ridge"]:
+    ridge_pred_cv = np.zeros(len(test.index))
+    ridge_valid_scores = []
+if IS_MODEL_RUN["LinearRegression"]:
+    lr_pred_cv = np.zeros(len(test.index))
+    lr_valid_scores = []
 
 for i, indexs in enumerate(kf.split(X, y)):
     print(f"\n=====Fold: {i+1}=====")
@@ -163,7 +175,7 @@ for i, indexs in enumerate(kf.split(X, y)):
         knnr_submission_df = pd.DataFrame(knnr_pred_cv)
         knnr_submission_df.columns = [target_col]
         knnr_submission_df.to_csv(submission_path + "submission_single_knnr.csv", index=False)
-    if IS_MODEL_RUN["RandomForest"]:
+    if IS_MODEL_RUN["Ridge"]:
         rf_model, rf_valid_score = randomforest_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} RandomForest valid score is: {rf_valid_score}")
         rf_valid_scores.append(rf_valid_score)
@@ -172,3 +184,21 @@ for i, indexs in enumerate(kf.split(X, y)):
         rf_submission_df = pd.DataFrame(rf_pred_cv)
         rf_submission_df.columns = [target_col]
         rf_submission_df.to_csv(submission_path + "submission_single_rf.csv", index=False)
+    if IS_MODEL_RUN["Ridge"]:
+        ridge_model, ridge_valid_score = ridge_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} Ridge valid score is: {ridge_valid_score}")
+        ridge_valid_scores.append(ridge_valid_score)
+        ridge_submission = ridge_model.predict(X_test)
+        ridge_pred_cv += ridge_submission / fold_num
+        ridge_submission_df = pd.DataFrame(ridge_pred_cv)
+        ridge_submission_df.columns = [target_col]
+        ridge_submission_df.to_csv(submission_path + "submission_single_ridge.csv", index=False)
+    if IS_MODEL_RUN["LinearRegression"]:
+        lr_model, lr_valid_score = linear_regression_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} LinearRegression valid score is: {lr_valid_score}")
+        lr_valid_scores.append(lr_valid_score)
+        lr_submission = lr_model.predict(X_test)
+        lr_pred_cv += lr_submission / fold_num
+        lr_submission_df = pd.DataFrame(lr_pred_cv)
+        lr_submission_df.columns = [target_col]
+        lr_submission_df.to_csv(submission_path + "submission_single_lr.csv", index=False)
