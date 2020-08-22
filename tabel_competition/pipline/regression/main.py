@@ -9,6 +9,7 @@ from lib.encode_feature import label_encode
 from models.my_lightgbm import lightgbm_train
 from models.my_xgboost import xgboost_train
 from models.my_catboost import catboost_train
+from models.my_svm import svm_train
 from sklearn.model_selection import KFold
 
 # fhase1. set parameters
@@ -30,13 +31,26 @@ fold_num = 4
 IS_MODEL_RUN = {
     "LightGBM": False,
     "XGBoost": False,
-    "CatBoost": True
+    "CatBoost": False,
+    "SVM": True
+}
+# simple ensemble
+do_ensemble = True
+simple_ensemble = {
+    "LightGBM": .8,
+    "XGBoost": .1,
+    "CatBoost": .0,
+    "SVM": .1
 }
 # save path
 submission_path = "submission/"
 
 # fhase1.5 check parameters
 assert sum(IS_MODEL_RUN.values()) != 0
+assert simple_ensemble.keys() == IS_MODEL_RUN.keys()
+for modelname in simple_ensemble.keys():
+    if simple_ensemble[modelname] > 0:
+        assert IS_MODEL_RUN[modelname]
 
 # fhase2. read data and merge
 train = pd.read_csv(TRAIN_DATA_PATH)
@@ -77,6 +91,9 @@ if IS_MODEL_RUN["XGBoost"]:
 if IS_MODEL_RUN["CatBoost"]:
     cbt_pred_cv = np.zeros(len(test.index))
     cbt_valid_scores = []
+if IS_MODEL_RUN["SVM"]:
+    svm_pred_cv = np.zeros(len(test.index))
+    svm_valid_scores = []
 
 for i, indexs in enumerate(skf.split(X, y)):
     print(f"\n=====Fold: {i+1}=====")
@@ -112,3 +129,5 @@ for i, indexs in enumerate(skf.split(X, y)):
         cbt_submission_df = pd.DataFrame(cbt_pred_cv)
         cbt_submission_df.columns = [target_col]
         cbt_submission_df.to_csv(submission_path + "submission_single_cbt.csv", index=False)
+    if IS_MODEL_RUN["SVM"]:
+        svm_model, svm_valid_score = svm_train(X_train, y_train, X_valid, y_valid)
