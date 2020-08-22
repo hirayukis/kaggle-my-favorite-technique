@@ -22,7 +22,7 @@ cat_encoding_method = "LabelEncoder"
 target_col = "salary"
 fold_num = 4
 IS_MODEL_RUN = {
-    "LightGBM": False,
+    "LightGBM": True,
     "XGBoost": True
 }
 submission_path = "submission/"
@@ -62,8 +62,10 @@ print(f"recreate test shape: {X_test.shape}")
 skf = KFold(n_splits=fold_num)
 if IS_MODEL_RUN["LightGBM"]:
     lgb_pred_cv = np.zeros(len(test.index))
+    lgb_valid_score = 0
 if IS_MODEL_RUN["XGBoost"]:
     xgb_pred_cv = np.zeros(len(test.index))
+    xgb_valid_score = 0
 
 for i, indexs in enumerate(skf.split(X, y)):
     print(f"=====Fold: {i+1}=====")
@@ -73,17 +75,18 @@ for i, indexs in enumerate(skf.split(X, y)):
     print(f"X_train's shape: {X_train.shape}, X_test's shape: {X_test.shape}")
     # singel LightGBM
     if IS_MODEL_RUN["LightGBM"]:
-        lgb_model, valid_score, importance_df = lightgbm_train(X_train, y_train, X_valid, y_valid, cols)
+        lgb_model, lgb_valid_score, importance_df = lightgbm_train(X_train, y_train, X_valid, y_valid, cols)
         lgb_submission = lgb_model.predict((X_test), num_iteration=lgb_model.best_iteration)
         lgb_pred_cv += lgb_submission / fold_num
-        score = np.mean(valid_score)
+        lgb_valid_score += lgb_valid_score / fold_num
         light_submission_df = pd.DataFrame(lgb_pred_cv)
         light_submission_df.columns = [target_col]
         light_submission_df.to_csv(submission_path + "submission_single_lgb.csv", index=False)
     if IS_MODEL_RUN["XGBoost"]:
-        xgb_model, valid_score = xgboost_train(X_train, y_train, X_valid, y_valid)
+        xgb_model, xgb_valid_score = xgboost_train(X_train, y_train, X_valid, y_valid)
         xgb_submission = xgb_model.predict(xgb.DMatrix(X_test), ntree_limit=xgb_model.best_iteration)
         xgb_pred_cv += xgb_submission / fold_num
+        lgb_valid_score += xgb_valid_score / fold_num
         xgb_submission_df = pd.DataFrame(xgb_pred_cv)
         xgb_submission_df.columns = [target_col]
         xgb_submission_df.to_csv(submission_path + "submission_single_xgb.csv", index=False)
