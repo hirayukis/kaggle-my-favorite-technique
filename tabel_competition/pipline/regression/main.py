@@ -31,11 +31,11 @@ fold_num = 4
 IS_MODEL_RUN = {
     "LightGBM": False,
     "XGBoost": False,
-    "CatBoost": False,
-    "SVM": True
+    "CatBoost": True,
+    "SVM": False,  # must be False
 }
 # simple ensemble
-do_ensemble = True
+do_ensemble = False
 simple_ensemble = {
     "LightGBM": .8,
     "XGBoost": .1,
@@ -48,9 +48,11 @@ submission_path = "submission/"
 # fhase1.5 check parameters
 assert sum(IS_MODEL_RUN.values()) != 0
 assert simple_ensemble.keys() == IS_MODEL_RUN.keys()
-for modelname in simple_ensemble.keys():
-    if simple_ensemble[modelname] > 0:
-        assert IS_MODEL_RUN[modelname]
+if do_ensemble:
+    for modelname in simple_ensemble.keys():
+        if simple_ensemble[modelname] > 0:
+            print(f"ensemble model: {modelname}")
+            assert IS_MODEL_RUN[modelname]
 
 # fhase2. read data and merge
 train = pd.read_csv(TRAIN_DATA_PATH)
@@ -131,3 +133,10 @@ for i, indexs in enumerate(skf.split(X, y)):
         cbt_submission_df.to_csv(submission_path + "submission_single_cbt.csv", index=False)
     if IS_MODEL_RUN["SVM"]:
         svm_model, svm_valid_score = svm_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} SVM valid score is: {svm_valid_score}")
+        svm_valid_scores.append(svm_valid_score)
+        svm_submission = svm_model.predict(X_test)
+        svm_pred_cv += svm_submission / fold_num
+        svm_submission_df = pd.DataFrame(svm_pred_cv)
+        svm_submission_df.columns = [target_col]
+        svm_submission_df.to_csv(submission_path + "submission_single_svm.csv", index=False)
