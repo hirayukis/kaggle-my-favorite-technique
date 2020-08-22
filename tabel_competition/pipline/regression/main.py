@@ -11,6 +11,7 @@ from models.my_xgboost import xgboost_train
 from models.my_catboost import catboost_train
 from models.my_svm import svr_train
 from models.my_knn import knnr_train
+from models.my_random_forest import randomforest_train
 from sklearn.model_selection import KFold
 
 # fhase1. set parameters
@@ -33,8 +34,9 @@ IS_MODEL_RUN = {
     "LightGBM": False,
     "XGBoost": False,
     "CatBoost": False,
-    "SVR": True,
-    "KNNR": True
+    "SVR": False,
+    "KNNR": False,
+    "RandomForest": True,
 }
 # simple ensemble
 do_ensemble = False
@@ -43,7 +45,8 @@ simple_ensemble = {
     "XGBoost": .1,
     "CatBoost": .0,
     "SVR": .1,
-    "KNNR": 0
+    "KNNR": 0,
+    "RandomForest": 0,
 }
 # save path
 submission_path = "submission/"
@@ -104,6 +107,9 @@ if IS_MODEL_RUN["SVR"]:
 if IS_MODEL_RUN["KNNR"]:
     knnr_pred_cv = np.zeros(len(test.index))
     knnr_valid_scores = []
+if IS_MODEL_RUN["RandomForest"]:
+    rf_pred_cv = np.zeros(len(test.index))
+    rf_valid_scores = []
 
 for i, indexs in enumerate(kf.split(X, y)):
     print(f"\n=====Fold: {i+1}=====")
@@ -157,3 +163,12 @@ for i, indexs in enumerate(kf.split(X, y)):
         knnr_submission_df = pd.DataFrame(knnr_pred_cv)
         knnr_submission_df.columns = [target_col]
         knnr_submission_df.to_csv(submission_path + "submission_single_knnr.csv", index=False)
+    if IS_MODEL_RUN["RandomForest"]:
+        rf_model, rf_valid_score = randomforest_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} RandomForest valid score is: {rf_valid_score}")
+        rf_valid_scores.append(rf_valid_score)
+        rf_submission = rf_model.predict(X_test)
+        rf_pred_cv += rf_submission / fold_num
+        rf_submission_df = pd.DataFrame(rf_pred_cv)
+        rf_submission_df.columns = [target_col]
+        rf_submission_df.to_csv(submission_path + "submission_single_rf.csv", index=False)
