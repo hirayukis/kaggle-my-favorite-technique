@@ -14,6 +14,7 @@ from models.my_knn import knnr_train
 from models.my_ridge import ridge_train
 from models.my_linear_regression import linear_regression_train
 from models.my_random_forest import randomforest_train
+from models.my_bagging_regressor import bagging_regressor_train
 from sklearn.model_selection import KFold
 
 # fhase1. set parameters
@@ -33,14 +34,15 @@ cat_encoding_method = "LabelEncoder"
 fold_num = 4
 # what to do in a single model
 IS_MODEL_RUN = {
-    "LightGBM": False,
-    "XGBoost": False,
-    "CatBoost": False,
-    "SVR": False,
-    "KNNR": False,
+    "LightGBM": True,
+    "XGBoost": True,
+    "CatBoost": True,
+    "SVR": True,
+    "KNNR": True,
     "RandomForest": True,
     "Ridge": True,
     "LinearRegression": True,
+    "BaggingRegressor": True,
 }
 # simple ensemble
 do_ensemble = False
@@ -53,6 +55,7 @@ simple_ensemble = {
     "RandomForest": 0,
     "Ridge": 0,
     "LinearRegression": 0,
+    "BaggingRegressor": 0,
 }
 # save path
 submission_path = "submission/"
@@ -122,6 +125,9 @@ if IS_MODEL_RUN["Ridge"]:
 if IS_MODEL_RUN["LinearRegression"]:
     lr_pred_cv = np.zeros(len(test.index))
     lr_valid_scores = []
+if IS_MODEL_RUN["BaggingRegressor"]:
+    br_pred_cv = np.zeros(len(test.index))
+    br_valid_scores = []
 
 for i, indexs in enumerate(kf.split(X, y)):
     print(f"\n=====Fold: {i+1}=====")
@@ -202,3 +208,12 @@ for i, indexs in enumerate(kf.split(X, y)):
         lr_submission_df = pd.DataFrame(lr_pred_cv)
         lr_submission_df.columns = [target_col]
         lr_submission_df.to_csv(submission_path + "submission_single_lr.csv", index=False)
+    if IS_MODEL_RUN["BaggingRegressor"]:
+        br_model, br_valid_score = bagging_regressor_train(X_train, y_train, X_valid, y_valid)
+        print(f"Fold {i+1} BaggingRegressor valid score is: {br_valid_score}")
+        br_valid_scores.append(br_valid_score)
+        br_submission = br_model.predict(X_test)
+        br_pred_cv += br_submission / fold_num
+        br_submission_df = pd.DataFrame(br_pred_cv)
+        br_submission_df.columns = [target_col]
+        br_submission_df.to_csv(submission_path + "submission_single_br.csv", index=False)
