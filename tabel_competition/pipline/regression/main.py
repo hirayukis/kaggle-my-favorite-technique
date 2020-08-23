@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from pandas_profiling import ProfileReport
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import KFold
 
@@ -82,9 +83,11 @@ if do_ensemble:
             print(f"ensemble model: {modelname}")
             assert IS_MODEL_RUN[modelname]
 
-# fhase2. read data and merge
+# fhase2. read data and merge and simple eda
 train = pd.read_csv(TRAIN_DATA_PATH)
 test = pd.read_csv(TEST_DATA_PATH)
+report = ProfileReport(pd.concat([train, test], axis=0, ignore_index=True, sort=True))
+report.to_file(eda_path + 'report.html')
 y = train[target_col].values
 test_id = test[target_id]
 data = pd.concat([train.drop([target_id, target_col], axis=1), test.drop([target_id], axis=1)])
