@@ -99,7 +99,7 @@ print(f"recreate test shape: {X_test.shape}")
 
 # fhase7. adversarial validation
 
-# fahse8. training
+# fahse8. First sibgle training and referrence
 kf = KFold(n_splits=fold_num, shuffle=True, random_state=seed)
 if IS_MODEL_RUN["LightGBM"]:
     lgb_pred_cv = np.zeros(len(test.index))
@@ -181,7 +181,7 @@ for i, indexs in enumerate(kf.split(X, y)):
         knnr_submission_df = pd.DataFrame(knnr_pred_cv)
         knnr_submission_df.columns = [target_col]
         knnr_submission_df.to_csv(submission_path + "submission_single_knnr.csv", index=False)
-    if IS_MODEL_RUN["Ridge"]:
+    if IS_MODEL_RUN["RandomForest"]:
         rf_model, rf_valid_score = randomforest_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} RandomForest valid score is: {rf_valid_score}")
         rf_valid_scores.append(rf_valid_score)
@@ -217,3 +217,27 @@ for i, indexs in enumerate(kf.split(X, y)):
         br_submission_df = pd.DataFrame(br_pred_cv)
         br_submission_df.columns = [target_col]
         br_submission_df.to_csv(submission_path + "submission_single_br.csv", index=False)
+
+
+print("#" * 15 + "ALL SINGLE MODEL CV" + "#" * 15)
+if IS_MODEL_RUN["LightGBM"]:
+    print(f"LightGBM valid CV score is: {np.array(lgb_valid_scores).mean()}")
+if IS_MODEL_RUN["XGBoost"]:
+    print(f"XGBoost valid CV score is: {np.array(xgb_valid_scores).mean()}")
+if IS_MODEL_RUN["CatBoost"]:
+    print(f"Catboost valid CV score is: {np.array(cbt_valid_scores).mean()}")
+if IS_MODEL_RUN["SVR"]:
+    print(f"SVR valid CV score is: {np.array(svr_valid_scores).mean()}")
+if IS_MODEL_RUN["KNNR"]:
+    print(f"KNNR valid CV score is: {np.array(knnr_valid_scores).mean()}")
+if IS_MODEL_RUN["RandomForest"]:
+    print(f"RandomForest valid CV score is: {np.array(rf_valid_scores).mean()}")
+if IS_MODEL_RUN["Ridge"]:
+    print(f"Ridge valid CV score is: {np.array(ridge_valid_scores).mean()}")
+if IS_MODEL_RUN["LinearRegression"]:
+    print(f"LinearRegression valid CV score is: {np.array(lr_valid_scores).mean()}")
+if IS_MODEL_RUN["BaggingRegressor"]:
+    print(f"BaggingRegressor(SVR) valid CV score is: {np.array(br_valid_scores).mean()}")
+print("#" * 15 + "ALL SINGLE MODEL CV" + "#" * 15)
+
+# fhase9: simple ensemble
