@@ -28,6 +28,7 @@ num_features = [
     "education", "service_length", "study_time", "commute", "overtime"
 ]
 target_col = "salary"
+target_id = "id"
 # encoding method
 cat_encoding_method = "LabelEncoder"
 # kFold
@@ -48,7 +49,7 @@ IS_MODEL_RUN = {
 do_ensemble = True
 simple_ensemble = {
     "LightGBM": .8,
-    "XGBoost": .1,
+    "XGBoost": .0,
     "CatBoost": .0,
     "SVR": .1,
     "KNNR": 0,
@@ -75,7 +76,8 @@ if do_ensemble:
 train = pd.read_csv(TRAIN_DATA_PATH)
 test = pd.read_csv(TEST_DATA_PATH)
 y = train[target_col].values
-data = pd.concat([train.drop(target_col, axis=1), test])
+test_id = test[target_id]
+data = pd.concat([train.drop([target_id, target_col], axis=1), test.drop([target_id], axis=1)])
 print(f"train shape: {train.shape}")
 print(f"test shape: {test.shape}")
 print(f"data merged. This shape: {data.shape}")
@@ -143,108 +145,112 @@ for i, (train_index, test_index) in enumerate(kf.split(X, y)):
         lgb_valid_scores.append(lgb_valid_score)
         lgb_submission = lgb_model.predict((X_test), num_iteration=lgb_model.best_iteration)
         lgb_pred_cv += lgb_submission / fold_num
-        if do_ensemble:
-            test_ensemble += lgb_pred_cv
-        light_submission_df = pd.DataFrame(lgb_pred_cv)
-        light_submission_df.columns = [target_col]
-        light_submission_df.to_csv(submission_path + "submission_single_lgb.csv", index=False)
     if IS_MODEL_RUN["XGBoost"]:
         xgb_model, xgb_valid_score = xgboost_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} XGBoost valid score is: {xgb_valid_score}")
         xgb_valid_scores.append(xgb_valid_score)
         xgb_submission = xgb_model.predict(xgb.DMatrix(X_test), ntree_limit=xgb_model.best_iteration)
         xgb_pred_cv += xgb_submission / fold_num
-        xgb_submission_df = pd.DataFrame(xgb_pred_cv)
-        xgb_submission_df.columns = [target_col]
-        xgb_submission_df.to_csv(submission_path + "submission_single_xgb.csv", index=False)
     if IS_MODEL_RUN["CatBoost"]:
         cbt_model, cbt_valid_score = catboost_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} CatBoost valid score is: {cbt_valid_score}")
         cbt_valid_scores.append(cbt_valid_score)
         cbt_submission = cbt_model.predict(X_test)
         cbt_pred_cv += cbt_submission / fold_num
-        cbt_submission_df = pd.DataFrame(cbt_pred_cv)
-        cbt_submission_df.columns = [target_col]
-        cbt_submission_df.to_csv(submission_path + "submission_single_cbt.csv", index=False)
     if IS_MODEL_RUN["SVR"]:
         svr_model, svr_valid_score = svr_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} SVR valid score is: {svr_valid_score}")
         svr_valid_scores.append(svr_valid_score)
         svr_submission = svr_model.predict(X_test)
         svr_pred_cv += svr_submission / fold_num
-        svr_submission_df = pd.DataFrame(svr_pred_cv)
-        svr_submission_df.columns = [target_col]
-        svr_submission_df.to_csv(submission_path + "submission_single_svr.csv", index=False)
     if IS_MODEL_RUN["KNNR"]:
         knnr_model, knnr_valid_score = knnr_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} KNN Regression valid score is: {knnr_valid_score}")
         knnr_valid_scores.append(knnr_valid_score)
         knnr_submission = knnr_model.predict(X_test)
         knnr_pred_cv += knnr_submission / fold_num
-        knnr_submission_df = pd.DataFrame(knnr_pred_cv)
-        knnr_submission_df.columns = [target_col]
-        knnr_submission_df.to_csv(submission_path + "submission_single_knnr.csv", index=False)
     if IS_MODEL_RUN["RandomForest"]:
         rf_model, rf_valid_score = randomforest_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} RandomForest valid score is: {rf_valid_score}")
         rf_valid_scores.append(rf_valid_score)
         rf_submission = rf_model.predict(X_test)
         rf_pred_cv += rf_submission / fold_num
-        rf_submission_df = pd.DataFrame(rf_pred_cv)
-        rf_submission_df.columns = [target_col]
-        rf_submission_df.to_csv(submission_path + "submission_single_rf.csv", index=False)
     if IS_MODEL_RUN["Ridge"]:
         ridge_model, ridge_valid_score = ridge_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} Ridge valid score is: {ridge_valid_score}")
         ridge_valid_scores.append(ridge_valid_score)
         ridge_submission = ridge_model.predict(X_test)
         ridge_pred_cv += ridge_submission / fold_num
-        ridge_submission_df = pd.DataFrame(ridge_pred_cv)
-        ridge_submission_df.columns = [target_col]
-        ridge_submission_df.to_csv(submission_path + "submission_single_ridge.csv", index=False)
     if IS_MODEL_RUN["LinearRegression"]:
         lr_model, lr_valid_score = linear_regression_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} LinearRegression valid score is: {lr_valid_score}")
         lr_valid_scores.append(lr_valid_score)
         lr_submission = lr_model.predict(X_test)
         lr_pred_cv += lr_submission / fold_num
-        lr_submission_df = pd.DataFrame(lr_pred_cv)
-        lr_submission_df.columns = [target_col]
-        lr_submission_df.to_csv(submission_path + "submission_single_lr.csv", index=False)
     if IS_MODEL_RUN["BaggingRegressor"]:
         br_model, br_valid_score = bagging_regressor_train(X_train, y_train, X_valid, y_valid)
         print(f"Fold {i+1} BaggingRegressor valid score is: {br_valid_score}")
         br_valid_scores.append(br_valid_score)
         br_submission = br_model.predict(X_test)
         br_pred_cv += br_submission / fold_num
-        br_submission_df = pd.DataFrame(br_pred_cv)
-        br_submission_df.columns = [target_col]
-        br_submission_df.to_csv(submission_path + "submission_single_br.csv", index=False)
 
 
 print("#" * 15 + "ALL SINGLE MODEL CV" + "#" * 15)
 if IS_MODEL_RUN["LightGBM"]:
     print(f"LightGBM valid CV score is: {np.array(lgb_valid_scores).mean()}")
+    light_submission_df = pd.DataFrame({target_id: test_id.values, target_col: lgb_pred_cv})
+    light_submission_df.to_csv(submission_path + "submission_single_lgb.csv", index=False)
+    if do_ensemble:
+        test_ensemble += lgb_pred_cv * simple_ensemble["LightGBM"]
 if IS_MODEL_RUN["XGBoost"]:
     print(f"XGBoost valid CV score is: {np.array(xgb_valid_scores).mean()}")
+    xgb_submission_df = pd.DataFrame({target_id: test_id.values, target_col: xgb_pred_cv})
+    xgb_submission_df.to_csv(submission_path + "submission_single_xgb.csv", index=False)
+    if do_ensemble:
+        test_ensemble += xgb_pred_cv * simple_ensemble["XGBoost"]
 if IS_MODEL_RUN["CatBoost"]:
-    print(f"Catboost valid CV score is: {np.array(cbt_valid_scores).mean()}")
+    print(f"CatBoost valid CV score is: {np.array(cbt_valid_scores).mean()}")
+    cbt_submission_df = pd.DataFrame({target_id: test_id.values, target_col: cbt_pred_cv})
+    cbt_submission_df.to_csv(submission_path + "submission_single_cbt.csv", index=False)
+    if do_ensemble:
+        test_ensemble += cbt_pred_cv * simple_ensemble["CatBoost"]
 if IS_MODEL_RUN["SVR"]:
     print(f"SVR valid CV score is: {np.array(svr_valid_scores).mean()}")
+    svr_submission_df = pd.DataFrame({target_id: test_id.values, target_col: svr_pred_cv})
+    svr_submission_df.to_csv(submission_path + "submission_single_svr.csv", index=False)
+    if do_ensemble:
+        test_ensemble += svr_pred_cv * simple_ensemble["SVR"]
 if IS_MODEL_RUN["KNNR"]:
     print(f"KNNR valid CV score is: {np.array(knnr_valid_scores).mean()}")
+    knnr_submission_df = pd.DataFrame({target_id: test_id.values, target_col: knnr_pred_cv})
+    knnr_submission_df.to_csv(submission_path + "submission_single_knnr.csv", index=False)
+    if do_ensemble:
+        test_ensemble += knnr_pred_cv * simple_ensemble["KNNR"]
 if IS_MODEL_RUN["RandomForest"]:
     print(f"RandomForest valid CV score is: {np.array(rf_valid_scores).mean()}")
+    rf_submission_df = pd.DataFrame({target_id: test_id.values, target_col: rf_pred_cv})
+    rf_submission_df.to_csv(submission_path + "submission_single_rf.csv", index=False)
+    if do_ensemble:
+        test_ensemble += rf_pred_cv * simple_ensemble["RandomForest"]
 if IS_MODEL_RUN["Ridge"]:
     print(f"Ridge valid CV score is: {np.array(ridge_valid_scores).mean()}")
+    ridge_submission_df = pd.DataFrame({target_id: test_id.values, target_col: ridge_pred_cv})
+    ridge_submission_df.to_csv(submission_path + "submission_single_ridge.csv", index=False)
+    if do_ensemble:
+        test_ensemble += ridge_pred_cv * simple_ensemble["Ridge"]
 if IS_MODEL_RUN["LinearRegression"]:
     print(f"LinearRegression valid CV score is: {np.array(lr_valid_scores).mean()}")
+    lr_submission_df = pd.DataFrame({target_id: test_id.values, target_col: lr_pred_cv})
+    lr_submission_df.to_csv(submission_path + "submission_single_lr.csv", index=False)
+    if do_ensemble:
+        test_ensemble += lr_pred_cv * simple_ensemble["LinearRegression"]
 if IS_MODEL_RUN["BaggingRegressor"]:
     print(f"BaggingRegressor(SVR) valid CV score is: {np.array(br_valid_scores).mean()}")
+    br_submission_df = pd.DataFrame({target_id: test_id.values, target_col: br_pred_cv})
+    br_submission_df.to_csv(submission_path + "submission_single_br.csv", index=False)
+    if do_ensemble:
+        test_ensemble += br_pred_cv * simple_ensemble["BaggingRegressor"]
 print("#" * 15 + "ALL SINGLE MODEL CV" + "#" * 15)
 
 # fhase9: simple ensemble
-if do_ensemble:
-    for model, rate in simple_ensemble.items():
-        if rate > 0:
-            print(model, rate)
+
