@@ -1,7 +1,9 @@
 import lightgbm as lgb
 import xgboost as xgb
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import KFold
 
@@ -226,7 +228,8 @@ for i, (train_index, valid_index) in enumerate(kf.split(X, y)):
 
 oof_idxes = np.concatenate(oof_idxes)
 order = np.argsort(oof_idxes)
-oof_df = pd.DataFrame({target_id: train[target_id][order]})
+oof_df_train = pd.DataFrame({target_id: train[target_id][order]})
+oof_df_test = test[[target_id]].copy()
 
 # referrence
 print("#" * 15 + "ALL SINGLE MODEL CV" + "#" * 15)
@@ -235,89 +238,127 @@ if IS_MODEL_RUN["LightGBM"]:
     light_submission_df = pd.DataFrame({target_id: test_id.values, target_col: lgb_pred_cv})
     light_submission_df.to_csv(submission_path + "submission_single_lgb.csv", index=False)
     lgb_pred_cv_oof = np.concatenate(lgb_pred_cv_oof, axis=0)
-    oof_df["LightGBM"] = lgb_pred_cv_oof[order]
+    oof_df_train["LightGBM"] = lgb_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += lgb_pred_cv * simple_ensemble["LightGBM"]
-        oof_ensemble += oof_df["LightGBM"] * simple_ensemble["LightGBM"]
+        oof_ensemble += oof_df_train["LightGBM"] * simple_ensemble["LightGBM"]
+    if do_stacking:
+        oof_df_test["LightGBM"] = lgb_pred_cv
 if IS_MODEL_RUN["XGBoost"]:
     print(f"XGBoost valid CV score is: {np.array(xgb_valid_scores).mean()}")
     xgb_submission_df = pd.DataFrame({target_id: test_id.values, target_col: xgb_pred_cv})
     xgb_submission_df.to_csv(submission_path + "submission_single_xgb.csv", index=False)
     xgb_pred_cv_oof = np.concatenate(xgb_pred_cv_oof, axis=0)
-    oof_df["XGBoost"] = xgb_pred_cv_oof[order]
+    oof_df_train["XGBoost"] = xgb_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += xgb_pred_cv * simple_ensemble["XGBoost"]
-        oof_ensemble += oof_df["XGBoost"] * simple_ensemble["XGBoost"]
+        oof_ensemble += oof_df_train["XGBoost"] * simple_ensemble["XGBoost"]
+    if do_stacking:
+        oof_df_test["XGBoost"] = xgb_pred_cv
 if IS_MODEL_RUN["CatBoost"]:
     print(f"CatBoost valid CV score is: {np.array(cbt_valid_scores).mean()}")
     cbt_submission_df = pd.DataFrame({target_id: test_id.values, target_col: cbt_pred_cv})
     cbt_submission_df.to_csv(submission_path + "submission_single_cbt.csv", index=False)
     cbt_pred_cv_oof = np.concatenate(cbt_pred_cv_oof, axis=0)
-    oof_df["CatBoost"] = cbt_pred_cv_oof[order]
+    oof_df_train["CatBoost"] = cbt_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += cbt_pred_cv * simple_ensemble["CatBoost"]
-        oof_ensemble += oof_df["CatBoost"] * simple_ensemble["CatBoost"]
+        oof_ensemble += oof_df_train["CatBoost"] * simple_ensemble["CatBoost"]
+    if do_stacking:
+        oof_df_test["CatBoost"] = cbt_pred_cv
 if IS_MODEL_RUN["SVR"]:
     print(f"SVR valid CV score is: {np.array(svr_valid_scores).mean()}")
     svr_submission_df = pd.DataFrame({target_id: test_id.values, target_col: svr_pred_cv})
     svr_submission_df.to_csv(submission_path + "submission_single_svr.csv", index=False)
     svr_pred_cv_oof = np.concatenate(svr_pred_cv_oof, axis=0)
-    oof_df["SVR"] = svr_pred_cv_oof[order]
+    oof_df_train["SVR"] = svr_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += svr_pred_cv * simple_ensemble["SVR"]
-        oof_ensemble += oof_df["SVR"] * simple_ensemble["SVR"]
+        oof_ensemble += oof_df_train["SVR"] * simple_ensemble["SVR"]
+    if do_stacking:
+        oof_df_test["SVR"] = svr_pred_cv
 if IS_MODEL_RUN["KNNR"]:
     print(f"KNNR valid CV score is: {np.array(knnr_valid_scores).mean()}")
     knnr_submission_df = pd.DataFrame({target_id: test_id.values, target_col: knnr_pred_cv})
     knnr_submission_df.to_csv(submission_path + "submission_single_knnr.csv", index=False)
     knnr_pred_cv_oof = np.concatenate(knnr_pred_cv_oof, axis=0)
-    oof_df["SVR"] = knnr_pred_cv_oof[order]
+    oof_df_train["KNNR"] = knnr_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += knnr_pred_cv * simple_ensemble["KNNR"]
-        oof_ensemble += oof_df["SVR"] * simple_ensemble["KNNR"]
+        oof_ensemble += oof_df_train["KNNR"] * simple_ensemble["KNNR"]
+    if do_stacking:
+        oof_df_test["KNNR"] = knnr_pred_cv
 if IS_MODEL_RUN["RandomForest"]:
     print(f"RandomForest valid CV score is: {np.array(rf_valid_scores).mean()}")
     rf_submission_df = pd.DataFrame({target_id: test_id.values, target_col: rf_pred_cv})
     rf_submission_df.to_csv(submission_path + "submission_single_rf.csv", index=False)
     rf_pred_cv_oof = np.concatenate(rf_pred_cv_oof, axis=0)
-    oof_df["RandomForest"] = rf_pred_cv_oof[order]
+    oof_df_train["RandomForest"] = rf_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += rf_pred_cv * simple_ensemble["RandomForest"]
-        oof_ensemble += oof_df["RandomForest"] * simple_ensemble["RandomForest"]
+        oof_ensemble += oof_df_train["RandomForest"] * simple_ensemble["RandomForest"]
+    if do_stacking:
+        oof_df_test["RandomForest"] = rf_pred_cv
 if IS_MODEL_RUN["Ridge"]:
     print(f"Ridge valid CV score is: {np.array(ridge_valid_scores).mean()}")
     ridge_submission_df = pd.DataFrame({target_id: test_id.values, target_col: ridge_pred_cv})
     ridge_submission_df.to_csv(submission_path + "submission_single_ridge.csv", index=False)
     ridge_pred_cv_oof = np.concatenate(ridge_pred_cv_oof, axis=0)
-    oof_df["Ridge"] = ridge_pred_cv_oof[order]
+    oof_df_train["Ridge"] = ridge_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += ridge_pred_cv * simple_ensemble["Ridge"]
-        oof_ensemble += oof_df["Ridge"] * simple_ensemble["Ridge"]
+        oof_ensemble += oof_df_train["Ridge"] * simple_ensemble["Ridge"]
+    if do_stacking:
+        oof_df_test["Ridge"] = ridge_pred_cv
 if IS_MODEL_RUN["LinearRegression"]:
     print(f"LinearRegression valid CV score is: {np.array(lr_valid_scores).mean()}")
     lr_submission_df = pd.DataFrame({target_id: test_id.values, target_col: lr_pred_cv})
     lr_submission_df.to_csv(submission_path + "submission_single_lr.csv", index=False)
     lr_pred_cv_oof = np.concatenate(lr_pred_cv_oof, axis=0)
-    oof_df["LinearRegression"] = lr_pred_cv_oof[order]
+    oof_df_train["LinearRegression"] = lr_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += lr_pred_cv * simple_ensemble["LinearRegression"]
-        oof_ensemble += oof_df["LinearRegression"] * simple_ensemble["LinearRegression"]
+        oof_ensemble += oof_df_train["LinearRegression"] * simple_ensemble["LinearRegression"]
+    if do_stacking:
+        oof_df_test["LinearRegression"] = lr_pred_cv
 if IS_MODEL_RUN["BaggingRegressor"]:
     print(f"BaggingRegressor(SVR) valid CV score is: {np.array(br_valid_scores).mean()}")
     br_submission_df = pd.DataFrame({target_id: test_id.values, target_col: br_pred_cv})
     br_submission_df.to_csv(submission_path + "submission_single_br.csv", index=False)
     br_pred_cv_oof = np.concatenate(br_pred_cv_oof, axis=0)
-    oof_df["BaggingRegressor"] = br_pred_cv_oof[order]
+    oof_df_train["BaggingRegressor"] = br_pred_cv_oof[order]
     if do_ensemble:
         test_ensemble += br_pred_cv * simple_ensemble["BaggingRegressor"]
-        oof_ensemble += oof_df["BaggingRegressor"] * simple_ensemble["BaggingRegressor"]
+        oof_ensemble += oof_df_train["BaggingRegressor"] * simple_ensemble["BaggingRegressor"]
+    if do_stacking:
+        oof_df_test["BaggingRegressor"] = br_pred_cv
 print("#" * 15 + "ALL SINGLE MODEL CV" + "#" * 15)
 
 # fhase9: simple ensemble
 if do_ensemble:
-    print("#" * 15 + "\nEnsemble" + "#" * 15)
+    print("\n" + "#" * 15 + "Ensemble" + "#" * 15)
     ensemble_submission_df = pd.DataFrame({target_id: test_id.values, target_col: test_ensemble})
     ensemble_submission_df.to_csv(submission_path + "submission_single_br.csv", index=False)
     emsemble_cv = np.sqrt(mean_squared_error(oof_ensemble, train[target_col][order]))
+    sns.heatmap(oof_df_train.corr(), vmax=1, vmin=-1, center=0)
+    plt.savefig('eda_image/oof_df_train_correation.png')
     print(f"Ensemble valid CV score is: {emsemble_cv}")
 
+# shase10: first stacking
+if do_stacking:
+    print("\n" + "#" * 15 + "Stacking" + "#" * 15)
+    lgb_valid_scores = []
+    X = oof_df_train.drop([target_id], axis=1).values
+    y = train[target_col][order].values
+    cols = oof_df_train.drop([target_id], axis=1).columns
+    X_test = oof_df_test.drop([target_id], axis=1).values
+    for i, (train_index, valid_index) in enumerate(kf.split(X, y)):
+        print(f"\n=====Stacking Fold: {i+1}=====")
+        X_train, y_train = X[train_index], y[train_index]
+        X_valid, y_valid = X[valid_index], y[valid_index]
+        lgb_model, lgb_valid_score, importance_df = lightgbm_train(X_train, y_train, X_valid, y_valid, cols)
+        print(f"Stacking Fold {i+1} LightGBM valid score is: {lgb_valid_score}")
+        lgb_valid_scores.append(lgb_valid_score)
+        lgb_submission = lgb_model.predict((X_test), num_iteration=lgb_model.best_iteration)
+        lgb_pred_cv += lgb_submission / fold_num
+    print(f"Ensemble valid CV score is: {np.array(lgb_valid_scores).mean()}")

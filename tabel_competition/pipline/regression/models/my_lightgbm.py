@@ -28,8 +28,8 @@ params = {
 }
 
 
-def plot_feature_importance(X, lgb_model):
-    attr = {k: v for k, v in zip(X.columns, lgb_model.feature_importance()) if v > 0}
+def plot_feature_importance(cols, lgb_model):
+    attr = {k: v for k, v in zip(cols, lgb_model.feature_importance()) if v > 0}
     attr = sorted(attr.items(), key=lambda x: x[1], reverse=False)
     x1, y1 = zip(*attr)
     i1 = range(len(x1))
@@ -37,7 +37,7 @@ def plot_feature_importance(X, lgb_model):
     plt.barh(i1, y1)
     plt.title("LGBM importance")
     plt.yticks(i1, x1)
-    plt.save()
+    plt.save("eda_image/lightgbm_importance.png")
 
 
 def lightgbm_train(X_train, y_train, X_valid, y_valid, cols):
