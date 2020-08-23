@@ -45,7 +45,7 @@ IS_MODEL_RUN = {
     "BaggingRegressor": True,
 }
 # simple ensemble
-do_ensemble = False
+do_ensemble = True
 simple_ensemble = {
     "LightGBM": .8,
     "XGBoost": .1,
@@ -100,6 +100,8 @@ print(f"recreate test shape: {X_test.shape}")
 # fhase7. adversarial validation
 
 # fahse8. First sibgle training and referrence
+if do_ensemble:
+    test_ensemble = np.zeros(len(test.index))
 kf = KFold(n_splits=fold_num, shuffle=True, random_state=seed)
 if IS_MODEL_RUN["LightGBM"]:
     lgb_pred_cv = np.zeros(len(test.index))
@@ -129,9 +131,8 @@ if IS_MODEL_RUN["BaggingRegressor"]:
     br_pred_cv = np.zeros(len(test.index))
     br_valid_scores = []
 
-for i, indexs in enumerate(kf.split(X, y)):
+for i, (train_index, test_index) in enumerate(kf.split(X, y)):
     print(f"\n=====Fold: {i+1}=====")
-    train_index, test_index = indexs
     X_train, y_train = X[train_index], y[train_index]
     X_valid, y_valid = X[test_index], y[test_index]
     print(f"X_train's shape: {X_train.shape}, X_test's shape: {X_test.shape}")
@@ -142,6 +143,8 @@ for i, indexs in enumerate(kf.split(X, y)):
         lgb_valid_scores.append(lgb_valid_score)
         lgb_submission = lgb_model.predict((X_test), num_iteration=lgb_model.best_iteration)
         lgb_pred_cv += lgb_submission / fold_num
+        if do_ensemble:
+            test_ensemble += lgb_pred_cv
         light_submission_df = pd.DataFrame(lgb_pred_cv)
         light_submission_df.columns = [target_col]
         light_submission_df.to_csv(submission_path + "submission_single_lgb.csv", index=False)
@@ -241,3 +244,7 @@ if IS_MODEL_RUN["BaggingRegressor"]:
 print("#" * 15 + "ALL SINGLE MODEL CV" + "#" * 15)
 
 # fhase9: simple ensemble
+if do_ensemble:
+    for model, rate in simple_ensemble.items():
+        if rate > 0:
+            print(model, rate)
