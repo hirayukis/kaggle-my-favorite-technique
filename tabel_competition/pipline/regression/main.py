@@ -7,6 +7,7 @@ import seaborn as sns
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import KFold
 
+from lib.adversarial_validation import adversarial_validate
 from lib.clean_data import clean
 from lib.create_features import create_features
 from lib.encode_feature import label_encode
@@ -40,32 +41,35 @@ fold_num = 4
 # what to do in a single model
 IS_MODEL_RUN = {
     "LightGBM": True,
-    "XGBoost": True,
-    "CatBoost": True,
-    "SVR": True,
-    "KNNR": True,
-    "RandomForest": True,
-    "Ridge": True,
-    "LinearRegression": True,
-    "BaggingRegressor": True,
+    "XGBoost": False,
+    "CatBoost": False,
+    "SVR": False,
+    "KNNR": False,
+    "RandomForest": False,
+    "Ridge": False,
+    "LinearRegression": False,
+    "BaggingRegressor": False,
 }
 # simple ensemble
 do_ensemble = True
 simple_ensemble = {
     "LightGBM": .7,
-    "XGBoost": .1,
-    "CatBoost": .1,
-    "SVR": .1,
+    "XGBoost": .0,
+    "CatBoost": .0,
+    "SVR": .0,
     "KNNR": 0,
     "RandomForest": 0,
     "Ridge": 0,
     "LinearRegression": 0,
     "BaggingRegressor": 0,
 }
+# adversarial validation
+do_adversarial_validation = True
 # first stacking
 do_stacking = True
 # save path
 submission_path = "submission/"
+eda_path = "eda_image/"
 # random seed
 seed = 42
 
@@ -106,6 +110,10 @@ print(f"recreate X shape: {X.shape}")
 print(f"recreate test shape: {X_test.shape}")
 
 # fhase7. adversarial validation
+if do_adversarial_validation:
+    print("\n" + "#" * 15 + "Adversarial validation" + "#" * 15)
+    adversarial_validate(data, len(train.index), eda_path + "before_adversarial")
+
 
 # fahse8. First sibgle training and referrence
 if do_ensemble:
@@ -341,7 +349,7 @@ if do_ensemble:
     ensemble_submission_df.to_csv(submission_path + "submission_single_br.csv", index=False)
     emsemble_cv = np.sqrt(mean_squared_error(oof_ensemble, train[target_col][order]))
     sns.heatmap(oof_df_train.corr(), vmax=1, vmin=-1, center=0)
-    plt.savefig('eda_image/oof_df_train_correation.png')
+    plt.savefig(eda_path + 'oof_df_train_correation.png')
     print(f"Ensemble valid CV score is: {emsemble_cv}")
 
 # shase10: first stacking
